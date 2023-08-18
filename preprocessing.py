@@ -1,7 +1,16 @@
 import pandas as pd
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+
 class preprocessing():
     def __init__(self, Dataset) -> None:
         self.dataset = Dataset
+    
+    def convert_date_to_datetime(self, column:str):
+        """
+        convert date column to datetime
+        """
+        self.dataset[column] = pd.to_datetime(self.dataset[column])
+        return self.dataset
     
     def fix_dataset_index(self):
         """
@@ -45,7 +54,27 @@ class preprocessing():
                     
         return self.dataset
     
+    def perform_one_hot_encoding(self, column:str):
+        """
+        one hot encoding for column
+        """
+        self.dataset = pd.get_dummies(self.dataset, columns=[column])
+        # Apply one-hot encoding
+        encoder = OneHotEncoder(drop='first', sparse=False)
+        encoded_data = encoder.fit_transform(self.dataset[column])
+        encoded_df = pd.DataFrame(encoded_data, columns=encoder.get_feature_names(column))
+
+        return encoded_df
     
+    def perform_label_column_encoding(self, column:str):
+        """
+        label encoding for column
+        """
+        # Label encoding for 'result'
+        label_encoder = LabelEncoder()
+        self.dataset['result_encoded'] = label_encoder.fit_transform(self.dataset['result'])
+
+        return self.dataset
     
     
     
