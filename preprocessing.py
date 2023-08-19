@@ -1,5 +1,6 @@
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
+import matplotlib.pyplot as plt
 
 class preprocessing():
     def __init__(self, Dataset) -> None:
@@ -53,30 +54,68 @@ class preprocessing():
                     self.dataset.at[index, column] = avg_attendance
                     
         return self.dataset
-    
-    def perform_one_hot_encoding(self, column:str):
-        """
-        one hot encoding for column
-        """
-        self.dataset = pd.get_dummies(self.dataset, columns=[column])
-        # Apply one-hot encoding
-        encoder = OneHotEncoder(drop='first', sparse=False)
-        encoded_data = encoder.fit_transform(self.dataset[column])
-        encoded_df = pd.DataFrame(encoded_data, columns=encoder.get_feature_names(column))
 
-        return encoded_df
     
     def perform_label_column_encoding(self, column:str):
         """
-        label encoding for column
+        label encoding for categoical columns
         """
         # Label encoding for 'result'
         label_encoder = LabelEncoder()
-        self.dataset['result_encoded'] = label_encoder.fit_transform(self.dataset['result'])
+        for col in column:
+            self.dataset[col] = label_encoder.fit_transform(self.dataset[col])
 
         return self.dataset
     
-    
-    
+    def plot_distributions(self, column:str):
+        """
+        plot distributions for numerical columns to ascertain the best normalization technique to use
+        """
+        # Plot histograms to visualize distributions
+        plt.figure(figsize=(12, 8))
+        self.dataset[column].hist(bins=20, figsize=(12, 8))
+        plt.tight_layout()
+        plt.show()
+        
+    def perform_normalization(self, column:str, type_:str):
+        """
+        normalization for numerical columns
+        """
+        # Standardization
+        scaler = StandardScaler() if type_ == "standard" else MinMaxScaler()
+
+        for col in column:
+            self.dataset[col] = scaler.fit_transform(self.dataset[col].values.reshape(-1, 1))
+        return self.dataset
+
+    def split_dataset(self,features:list, column:str="date", target:str="result"):
+        """
+        split dataset into train and test based on time while also ensuring 
+        our train dataset accounts for 80 percent of the total dataset by 
+        automatically calculating the cutoff date
+        """
+        
+        # sort the data by date in ascending order
+        self.dataset = self.dataset.sort_values(by=column)
+        
+        # calculate total number of samples
+        total_samples = len(self.dataset)
+        
+        # calculate the index for approximately 80% training data
+        train_samples = int(0.8 * total_samples)
+        
+        # get the cutoff date corresponding to the calculated index
+        cutoff_date = self.dataset.iloc[train_samples][column]
+        
+        # Split the dataset into train and test sets
+        train_data = self.dataset[self.dataset[column] < cutoff_date]
+        test_data = self.dataset[self.dataset[column] >= cutoff_date]
+        
+        X_train = train_data[features]
+        y_train = train_data[target]
+        X_test = test_data[features]
+        y_test = test_data[target]
+        
+        return X_train, y_train, X_test, y_test
     
     
