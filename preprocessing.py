@@ -146,3 +146,29 @@ class Preprocessing():
         y_test = test_data[target]
         
         return X_train, y_train, X_test, y_test
+    
+    def create_streak_features(self):
+        # Create an empty list to store streak values
+        streaks = []
+
+        # Iterate through each row
+        for index, row in self.dataset.iterrows():
+            team = row['team']
+            date = row['date']
+            result = row['result']
+            
+            # Get the team's last 5 matches before the current date
+            team_matches = self.dataset[(self.dataset['team'] == team) & (self.dataset['date'] < date)].tail(5)
+            
+            # Calculate the team's winning streak
+            win_streak = 0
+            for i, match in team_matches.iterrows():
+                if match['result'] == 'W':
+                    win_streak += 1
+                else:
+                    break
+            
+            streaks.append(win_streak)
+
+        # Add the streak values as a new column in the dataset
+        self.dataset['win_streak'] = streaks
