@@ -1,8 +1,10 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-class preprocessing():
+
+class Preprocessing():
     def __init__(self, Dataset) -> None:
         self.dataset = Dataset
     
@@ -11,21 +13,18 @@ class preprocessing():
         convert date column to datetime
         """
         self.dataset[column] = pd.to_datetime(self.dataset[column])
-        return self.dataset
     
     def fix_dataset_index(self):
         """
         fix dataset index
         """
         self.dataset = self.dataset.reset_index(drop=True)
-        return self.dataset
-    
+
     def remove_data_values(self, threshold:str):
         """
         remove data values less than threshold
         """
         self.dataset = self.dataset[self.dataset['date'] > threshold]
-        return self.dataset
     
     def check_missing_values(self):
         print(self.dataset.isnull().sum())
@@ -35,11 +34,16 @@ class preprocessing():
         drops column in columns list from dataset
         """
         self.dataset = self.dataset.drop(columns, axis=1)
-        return self.dataset
+        
+    def drop_rows_with_missing_values(self):
+        """
+        drops rows with missing values
+        """
+        self.dataset = self.dataset.dropna()
     
     def perform_temporal_imputation(self, column:str):
         """
-        Temporal imputation for missing Attendance using previous 3 matches
+        Temporal imputation for missing values in Attendance column using previous 3 matches
         """
         for index, row in self.dataset.iterrows():
             if pd.isnull(row[column]) and row["venue"] == "Home":
@@ -53,19 +57,34 @@ class preprocessing():
                     avg_attendance = previous_matches[column].mean()
                     self.dataset.at[index, column] = avg_attendance
                     
-        return self.dataset
+    
+    def perform_temporal_imputation_away(self, column: str):
+        """
+        Temporal imputation for missing Attendance using previous 3 away matches
+        """
+        for index, row in self.dataset.iterrows():
+            if pd.isnull(row[column]) and row["venue"] == "Away":
+                away_team = row["team"]
+                match_date = row["date"]
+                
+                previous_away_matches = self.dataset[(self.dataset["team"] == away_team) & (self.dataset["date"] < match_date) & (self.dataset["venue"] == "Home")]
+                previous_away_matches = previous_away_matches.nlargest(3, "date")
+                
+                if not previous_away_matches.empty:
+                    avg_attendance = previous_away_matches[column].mean()
+                    self.dataset.at[index, column] = avg_attendance
+
 
     
     def perform_label_column_encoding(self, column:str):
         """
-        label encoding for categoical columns
+        label encoding for categorical columns
         """
         # Label encoding for 'result'
         label_encoder = LabelEncoder()
         for col in column:
             self.dataset[col] = label_encoder.fit_transform(self.dataset[col])
 
-        return self.dataset
     
     def plot_distributions(self, column:str):
         """
@@ -75,6 +94,17 @@ class preprocessing():
         plt.figure(figsize=(12, 8))
         self.dataset[column].hist(bins=20, figsize=(12, 8))
         plt.tight_layout()
+        plt.show()
+    
+    def plot_correlation_matrix(self, column:list):
+        """
+        plot correlation matrix to ascertain the best features to use
+        """
+        # Plot correlation matrix
+        plt.figure(figsize=(12, 8))
+        corr_matrix = self.dataset[column].corr()
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0)
+        plt.title('Correlation Matrix')
         plt.show()
         
     def perform_normalization(self, column:str, type_:str):
@@ -86,7 +116,6 @@ class preprocessing():
 
         for col in column:
             self.dataset[col] = scaler.fit_transform(self.dataset[col].values.reshape(-1, 1))
-        return self.dataset
 
     def split_dataset(self,features:list, column:str="date", target:str="result"):
         """
@@ -117,5 +146,3 @@ class preprocessing():
         y_test = test_data[target]
         
         return X_train, y_train, X_test, y_test
-    
-    
